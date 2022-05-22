@@ -29,24 +29,35 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 				{
 					if operations.contains(chr)
 					{
-						let val_0;
-						if let StackToken::Number(maybe_val_0) = to_solve.get(x - 1).unwrap()
+						if x == 0
 						{
-							val_0 = *maybe_val_0;
+							println!("Error: Operator at start of expression.");
+							std::process::exit(0);
 						}
-						else
+						let val_0 = match to_solve.get(x - 1)
 						{
-							val_0 = 0f64;
-						}
-						let val_1;
-						if let StackToken::Number(maybe_val_1) = to_solve.get(x + 1).unwrap()
+							Some(StackToken::Number(valid)) => *valid,
+							Some(_) =>
+							{
+								println!("Error: There is an operator that does not have a number to its left.");
+								std::process::exit(0);
+							},
+							None => 0f64
+						};
+						let val_1 = match to_solve.get(x + 1)
 						{
-							val_1 = *maybe_val_1
-						}
-						else
-						{
-							val_1 = 0f64;
-						}
+							Some(StackToken::Number(valid)) => *valid,
+							Some(_) =>
+							{
+								println!("Error: There is an operator that does not have a number to its right.");
+								std::process::exit(0);
+							},
+							None =>
+							{
+								println!("Error: Operator at end of expression.");
+								std::process::exit(0);
+							}
+						};
 						let out: f64;
 						match chr
 						{
@@ -82,9 +93,14 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 			x += 1;
 		}
 	}
-	if to_solve.len() != 1
+	if to_solve.len() > 1
 	{
-		println!("Error: More opening brackets than close ones.");
+		println!("Error: Syntax error.");
+		std::process::exit(0);
+	}
+	else if to_solve.len() == 0
+	{
+		println!("Error: Blank expression.");
 		std::process::exit(0);
 	}
 	return to_solve.pop().unwrap();
@@ -132,7 +148,7 @@ fn main()
 							}
 							None =>
 							{
-								println!("Error: More closing brackets than open ones.");
+								println!("Error: More closing brackets than opening brackets.");
 								return;
 							}
 						}
@@ -144,7 +160,7 @@ fn main()
 							}
 							None =>
 							{
-								println!("Error: More closing brackets than open ones.");
+								println!("Error: More closing brackets than opening brackets.");
 								return;
 							}
 						}
@@ -177,14 +193,6 @@ fn main()
 			}
 		}
 	}
-
-	// Check for bracket mismatch
-	/*if stack.len() != 1
-	{
-		println!("Error: More opening brackets than close ones.");
-		return;
-	}*/
-
 	// Last solve
 	let top: Vec<StackToken>;
 	match stack.pop()
@@ -195,10 +203,17 @@ fn main()
 		}
 		None =>
 		{
-			println!("Error: More closing brackets than open ones.");
+			println!("Error: More closing brackets than opening brackets.");
 			return;
 		}
 	}
+	// Check stack length
+	if stack.len() != 0
+	{
+		println!("Error: More opening brackets than closing brackets.");
+		return;
+	}
+
 	match solve(top)
 	{
 		StackToken::Number(val) =>
