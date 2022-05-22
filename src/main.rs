@@ -18,7 +18,6 @@ const OPERATIONS:[[char; 2]; 2] =
 
 fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 {
-	//for x in
 	for operations in OPERATIONS
 	{
 		let mut x: usize = 0;
@@ -75,6 +74,7 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 						to_solve.remove(x);
 						to_solve.remove(x);
 						to_solve[x - 1] = StackToken::Number(out);
+						x -= 1;
 					}
 				}
 				_ => {}
@@ -82,7 +82,11 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 			x += 1;
 		}
 	}
-
+	if to_solve.len() != 1
+	{
+		println!("Error: More opening brackets than close ones.");
+		std::process::exit(0);
+	}
 	return to_solve.pop().unwrap();
 }
 
@@ -95,12 +99,14 @@ fn main()
 		println!("Error: Invalid argument count, needs 2 arguments.");
 		return;
 	}
+
 	// For each char in second argument
 	let eq: Vec<char> = args[1].chars().collect();
 	let mut parse_mode = ParseMode::None;
 	let mut stack: Vec<Vec<StackToken>> = vec![Vec::new()];
 	for (x, chr) in eq.iter().enumerate()
 	{
+		// Parse char
 		match parse_mode
 		{
 			ParseMode::None =>
@@ -113,36 +119,49 @@ fn main()
 				{
 					if *chr == '('
 					{
-						//stack.push(StackToken::BracketOpen);
-						//enclose_start_stack
 						stack.push(Vec::new());
 					}
 					else if *chr == ')'
 					{
-						let mut top = stack.pop().unwrap();
-						stack.last_mut().unwrap().push(solve(top));
+						let top: Vec<StackToken>;
+						match stack.pop()
+						{
+							Some(valid) =>
+							{
+								top = valid;
+							}
+							None =>
+							{
+								println!("Error: More closing brackets than open ones.");
+								return;
+							}
+						}
+						match stack.last_mut()
+						{
+							Some(valid) =>
+							{
+								valid.push(solve(top));
+							}
+							None =>
+							{
+								println!("Error: More closing brackets than open ones.");
+								return;
+							}
+						}
 					}
 					else
 					{
 						stack.last_mut().unwrap().push(StackToken::Operator(*chr));
 					}
-					//println!("Char: {}", chr);
 				}
 			},
 			_ => {}
 		}
 
 		// Get next char
-		let next_chr : char;
-		if x < eq.len() - 1
-		{
-			next_chr = eq[x + 1];
-		}
-		else
-		{
-			next_chr = '\0';
-		}
+		let next_chr = *eq.get(x + 1).unwrap_or(&'\0');
 
+		// Parse again depending on this and the next char
 		match parse_mode
 		{
 			ParseMode::None => {},
@@ -153,14 +172,34 @@ fn main()
 					let num_string: String = eq[start..=x].iter().collect();
 					let num = num_string.parse::<f64>().unwrap();
 					stack.last_mut().unwrap().push(StackToken::Number(num));
-					//println!("Num: {:?}", num);
 					parse_mode = ParseMode::None;
 				}
 			}
 		}
-		//println!("{}, {}", chr, next_chr);
 	}
-	match solve(stack.pop().unwrap())
+
+	// Check for bracket mismatch
+	/*if stack.len() != 1
+	{
+		println!("Error: More opening brackets than close ones.");
+		return;
+	}*/
+
+	// Last solve
+	let top: Vec<StackToken>;
+	match stack.pop()
+	{
+		Some(valid) =>
+		{
+			top = valid;
+		}
+		None =>
+		{
+			println!("Error: More closing brackets than open ones.");
+			return;
+		}
+	}
+	match solve(top)
 	{
 		StackToken::Number(val) =>
 		{
