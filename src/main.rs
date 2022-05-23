@@ -19,17 +19,63 @@ const OPERATIONS:[[char; 2]; 3] =
 	['+', '-']
 ];
 
-fn run_fn(param: StackToken, func_name: &String) -> StackToken
+fn run_fn(params: Vec<StackToken>, func_name: &String) -> StackToken
 {
-	let num: f64 = match param
+	let mut nums: Vec<f64> = Vec::new();
+	for param in params
 	{
-		StackToken::Number(valid) => valid,
-		_ => 0f64
+		nums.push(match param
+		{
+			StackToken::Number(valid) => valid,
+			_ => 0f64
+		});
+	}
+	let param_count: usize = match func_name.as_str()
+	{
+		"sqrt" => 1,
+		"cbrt" => 1,
+		"sin" => 1,
+		"cos" => 1,
+		"tan" => 1,
+		"asin" => 1,
+		"acos" => 1,
+		"atan" => 1,
+		"sinh" => 1,
+		"cosh" => 1,
+		"tanh" => 1,
+		"asinh" => 1,
+		"acosh" => 1,
+		"atanh" => 1,
+		"root" => 2,
+		_ => 0
 	};
+	if param_count == 0
+	{
+		println!("Error: Invalid function.");
+		std::process::exit(0);
+	}
+	if nums.len() != param_count
+	{
+		println!("Error: Invalid parameter count.");
+		std::process::exit(0);
+	}
 	return match func_name.as_str()
 	{
-		"sqrt" => StackToken::Number(num.sqrt()),
-		"cbrt" => StackToken::Number(num.cbrt()),
+		"sqrt" => StackToken::Number(nums[0].sqrt()),
+		"cbrt" => StackToken::Number(nums[0].cbrt()),
+		"sin" => StackToken::Number(nums[0].sin()),
+		"cos" => StackToken::Number(nums[0].cos()),
+		"tan" => StackToken::Number(nums[0].tan()),
+		"asin" => StackToken::Number(nums[0].asin()),
+		"acos" => StackToken::Number(nums[0].acos()),
+		"atan" => StackToken::Number(nums[0].atan()),
+		"sinh" => StackToken::Number(nums[0].sinh()),
+		"cosh" => StackToken::Number(nums[0].cosh()),
+		"tanh" => StackToken::Number(nums[0].tanh()),
+		"asinh" => StackToken::Number(nums[0].asinh()),
+		"acosh" => StackToken::Number(nums[0].acosh()),
+		"atanh" => StackToken::Number(nums[0].atanh()),
+		"root" => StackToken::Number(nums[0].powf(1f64 / nums[1])),
 		_ =>
 		{
 			println!("Error: Invalid function.");
@@ -126,7 +172,7 @@ fn main()
 	// For each char in second argument
 	let eq: Vec<char> = args[1].chars().collect();
 	let mut parse_mode = ParseMode::None;
-	let mut stack: Vec<Vec<StackToken>> = vec![Vec::new()];
+	let mut stack: Vec<Vec<Vec<StackToken>>> = vec![vec![Vec::new()]];
 	for (x, chr) in eq.iter().enumerate()
 	{
 		// Parse char
@@ -144,18 +190,27 @@ fn main()
 				}
 				else if !chr.is_whitespace()
 				{
-					if *chr == '('
+					if *chr == ','
 					{
-						stack.push(Vec::new());
+						stack.last_mut().unwrap().push(Vec::new());
+					}
+					else if *chr == '('
+					{
+						stack.push(vec![Vec::new()]);
 					}
 					else if *chr == ')'
 					{
-						let mut top: StackToken;
+						let mut solved: Vec<StackToken> = Vec::new();
 						match stack.pop()
 						{
 							Some(valid) =>
 							{
-								top = solve(valid);
+								//top = solve(valid);
+								//let mut solved: Vec<StackToken> = Vec::new();
+								for sub_exp in valid
+								{
+									solved.push(solve(sub_exp));
+								}
 							}
 							None =>
 							{
@@ -163,21 +218,28 @@ fn main()
 								return;
 							}
 						}
+						let top;
 						match stack.last_mut()
 						{
 							Some(valid) =>
 							{
-								match valid.last()
+								match valid.last().unwrap().last()
 								{
 									Some(StackToken::Keyword(keyword)) =>
 									{
-										top = run_fn(top, &keyword);
-										valid.pop();
+										top = run_fn(solved, &keyword);
+										valid.last_mut().unwrap().pop();
 									},
-									Some(_) => {},
-									None => {}
+									Some(_) =>
+									{
+										top = solved.pop().unwrap();
+									},
+									None =>
+									{
+										top = solved.pop().unwrap();
+									}
 								}
-								valid.push(top);
+								valid.last_mut().unwrap().push(top);
 							}
 							None =>
 							{
@@ -188,7 +250,7 @@ fn main()
 					}
 					else
 					{
-						stack.last_mut().unwrap().push(StackToken::Operator(*chr));
+						stack.last_mut().unwrap().last_mut().unwrap().push(StackToken::Operator(*chr));
 					}
 				}
 			},
@@ -216,7 +278,7 @@ fn main()
 							return;
 						}
 					};
-					stack.last_mut().unwrap().push(StackToken::Number(num));
+					stack.last_mut().unwrap().last_mut().unwrap().push(StackToken::Number(num));
 					parse_mode = ParseMode::None;
 				}
 			}
@@ -225,7 +287,7 @@ fn main()
 				if !(next_chr.is_alphanumeric() || next_chr == '_')
 				{
 					let string: String = eq[start..=x].iter().collect();
-					stack.last_mut().unwrap().push(StackToken::Keyword(string));
+					stack.last_mut().unwrap().last_mut().unwrap().push(StackToken::Keyword(string));
 					parse_mode = ParseMode::None;
 				}
 			}
@@ -233,7 +295,7 @@ fn main()
 	}
 	// Last solve
 	let top: Vec<StackToken>;
-	match stack.pop()
+	match stack.pop().unwrap().pop()
 	{
 		Some(valid) =>
 		{
