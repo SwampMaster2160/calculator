@@ -12,11 +12,11 @@ enum StackToken
 	Keyword(String)
 }
 
-const OPERATIONS:[[char; 2]; 3] =
+const OPERATIONS:[[char; 3]; 3] =
 [
-	['^', '\0'],
-	['*', '/'],
-	['+', '-']
+	['^', '\0', '\0'],
+	['*', '/', '%'],
+	['+', '-', '\0']
 ];
 
 fn run_fn(params: Vec<StackToken>, func_name: &String) -> StackToken
@@ -47,6 +47,7 @@ fn run_fn(params: Vec<StackToken>, func_name: &String) -> StackToken
 		"acosh" => 1,
 		"atanh" => 1,
 		"root" => 2,
+		"neg" => 1,
 		_ => 0
 	};
 	if param_count == 0
@@ -76,6 +77,7 @@ fn run_fn(params: Vec<StackToken>, func_name: &String) -> StackToken
 		"acosh" => StackToken::Number(nums[0].acosh()),
 		"atanh" => StackToken::Number(nums[0].atanh()),
 		"root" => StackToken::Number(nums[0].powf(1f64 / nums[1])),
+		"neg" => StackToken::Number(-nums[0]),
 		_ =>
 		{
 			println!("Error: Invalid function.");
@@ -97,21 +99,6 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 				{
 					if operations.contains(&chr)
 					{
-						if x == 0
-						{
-							println!("Error: Operator at start of expression.");
-							std::process::exit(0);
-						}
-						let val_0 = match to_solve.get(x - 1)
-						{
-							Some(StackToken::Number(valid)) => *valid,
-							Some(_) =>
-							{
-								println!("Error: There is an operator that does not have a number to its left.");
-								std::process::exit(0);
-							},
-							None => 0f64
-						};
 						let val_1 = match to_solve.get(x + 1)
 						{
 							Some(StackToken::Number(valid)) => *valid,
@@ -126,12 +113,40 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 								std::process::exit(0);
 							}
 						};
+						if x == 0
+						{
+							if chr == '-'
+							{
+								to_solve.remove(x + 1);
+								to_solve[x] = StackToken::Number(-val_1);
+								continue;
+							}
+							println!("Error: Operator at start of expression.");
+							std::process::exit(0);
+						}
+						let val_0 = match to_solve.get(x - 1)
+						{
+							Some(StackToken::Number(valid)) => *valid,
+							Some(_) =>
+							{
+								if chr == '-'
+								{
+									to_solve.remove(x);
+									to_solve[x - 1] = StackToken::Number(-val_1);
+									continue;
+								}
+								println!("Error: There is an operator that does not have a number to its left.");
+								std::process::exit(0);
+							},
+							None => 0f64
+						};
 						let out: f64 = match chr
 						{
 							'+' => val_0 + val_1,
 							'-' => val_0 - val_1,
 							'*' => val_0 * val_1,
 							'/' => val_0 / val_1,
+							'%' => val_0 % val_1,
 							'^' => val_0.powf(val_1),
 							_ => 0f64
 						};
@@ -232,10 +247,20 @@ fn main()
 									},
 									Some(_) =>
 									{
+										if solved.len() != 1
+										{
+											println!("Error: Only allowed one result.");
+											return;
+										}
 										top = solved.pop().unwrap();
 									},
 									None =>
 									{
+										if solved.len() != 1
+										{
+											println!("Error: Only allowed one result.");
+											return;
+										}
 										top = solved.pop().unwrap();
 									}
 								}
@@ -293,30 +318,24 @@ fn main()
 			}
 		}
 	}
-	// Last solve
-	let top: Vec<StackToken>;
-	match stack.pop().unwrap().pop()
-	{
-		Some(valid) =>
-		{
-			top = valid;
-		}
-		None =>
-		{
-			println!("Error: More closing brackets than opening brackets.");
-			return;
-		}
-	}
 
-	// Check stack length
-	if stack.len() != 0
+	// Last solve and check
+	if stack.len() != 1
 	{
 		println!("Error: More opening brackets than closing brackets.");
 		return;
 	}
+	let mut top = stack.pop().unwrap();
+	if top.len() != 1
+	{
+		println!("Error: Only allowed one result.");
+		return;
+	}
+	let top = top.pop().unwrap();
+	let last_solved = solve(top);
 
 	// Print result
-	match solve(top)
+	match last_solved
 	{
 		StackToken::Number(val) =>
 		{
