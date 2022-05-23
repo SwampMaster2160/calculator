@@ -1,17 +1,20 @@
 enum ParseMode
 {
 	None,
-	Numeric(usize)
+	Numeric(usize),
+	Alphanumeric(usize)
 }
 
 enum StackToken
 {
 	Number(f64),
-	Operator(char)
+	Operator(char),
+	Keyword(String)
 }
 
-const OPERATIONS:[[char; 2]; 2] =
+const OPERATIONS:[[char; 2]; 3] =
 [
+	['^', '\0'],
 	['*', '/'],
 	['+', '-']
 ];
@@ -23,11 +26,11 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 		let mut x: usize = 0;
 		while x < to_solve.len()
 		{
-			match to_solve.get(x).unwrap()
+			match to_solve[x]
 			{
 				StackToken::Operator(chr) =>
 				{
-					if operations.contains(chr)
+					if operations.contains(&chr)
 					{
 						if x == 0
 						{
@@ -58,30 +61,15 @@ fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 								std::process::exit(0);
 							}
 						};
-						let out: f64;
-						match chr
+						let out: f64 = match chr
 						{
-							'+' =>
-							{
-								out = val_0 + val_1;
-							}
-							'-' =>
-							{
-								out = val_0 - val_1;
-							}
-							'*' =>
-							{
-								out = val_0 * val_1;
-							}
-							'/' =>
-							{
-								out = val_0 / val_1;
-							}
-							_ =>
-							{
-								out = 0f64;
-							}
-						}
+							'+' => val_0 + val_1,
+							'-' => val_0 - val_1,
+							'*' => val_0 * val_1,
+							'/' => val_0 / val_1,
+							'^' => val_0.powf(val_1),
+							_ => 0f64
+						};
 						to_solve.remove(x);
 						to_solve.remove(x);
 						to_solve[x - 1] = StackToken::Number(out);
@@ -127,9 +115,13 @@ fn main()
 		{
 			ParseMode::None =>
 			{
-				if chr.is_numeric()
+				if chr.is_numeric() || *chr == '.'
 				{
 					parse_mode = ParseMode::Numeric(x);
+				}
+				else if chr.is_alphabetic() || *chr == '_'
+				{
+					parse_mode = ParseMode::Alphanumeric(x);
 				}
 				else if !chr.is_whitespace()
 				{
@@ -183,11 +175,28 @@ fn main()
 			ParseMode::None => {},
 			ParseMode::Numeric(start) =>
 			{
-				if !(next_chr.is_numeric() || next_chr == '.')
+				if !(next_chr.is_alphanumeric() || next_chr == '.')
 				{
 					let num_string: String = eq[start..=x].iter().collect();
-					let num = num_string.parse::<f64>().unwrap();
+					let num: f64 = match num_string.parse::<f64>()
+					{
+						Ok(valid) => valid,
+						Err(_) =>
+						{
+							println!("Error: Invalid number.");
+							return;
+						}
+					};
 					stack.last_mut().unwrap().push(StackToken::Number(num));
+					parse_mode = ParseMode::None;
+				}
+			}
+			ParseMode::Alphanumeric(start) =>
+			{
+				if !(next_chr.is_alphanumeric() || next_chr == '_')
+				{
+					let string: String = eq[start..=x].iter().collect();
+					stack.last_mut().unwrap().push(StackToken::Keyword(string));
 					parse_mode = ParseMode::None;
 				}
 			}
