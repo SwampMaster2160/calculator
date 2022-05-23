@@ -19,6 +19,25 @@ const OPERATIONS:[[char; 2]; 3] =
 	['+', '-']
 ];
 
+fn run_fn(param: StackToken, func_name: &String) -> StackToken
+{
+	let num: f64 = match param
+	{
+		StackToken::Number(valid) => valid,
+		_ => 0f64
+	};
+	return match func_name.as_str()
+	{
+		"sqrt" => StackToken::Number(num.sqrt()),
+		"cbrt" => StackToken::Number(num.cbrt()),
+		_ =>
+		{
+			println!("Error: Invalid function.");
+			std::process::exit(0);
+		}
+	}
+}
+
 fn solve(mut to_solve: Vec<StackToken>) -> StackToken
 {
 	for operations in OPERATIONS
@@ -131,12 +150,12 @@ fn main()
 					}
 					else if *chr == ')'
 					{
-						let top: Vec<StackToken>;
+						let mut top: StackToken;
 						match stack.pop()
 						{
 							Some(valid) =>
 							{
-								top = valid;
+								top = solve(valid);
 							}
 							None =>
 							{
@@ -148,7 +167,17 @@ fn main()
 						{
 							Some(valid) =>
 							{
-								valid.push(solve(top));
+								match valid.last()
+								{
+									Some(StackToken::Keyword(keyword)) =>
+									{
+										top = run_fn(top, &keyword);
+										valid.pop();
+									},
+									Some(_) => {},
+									None => {}
+								}
+								valid.push(top);
 							}
 							None =>
 							{
@@ -216,6 +245,7 @@ fn main()
 			return;
 		}
 	}
+
 	// Check stack length
 	if stack.len() != 0
 	{
@@ -223,12 +253,17 @@ fn main()
 		return;
 	}
 
+	// Print result
 	match solve(top)
 	{
 		StackToken::Number(val) =>
 		{
 			println!("{}", val);
 		},
-		_ => {}
+		_ =>
+		{
+			println!("Error: Syntax error.");
+			return;
+		}
 	}
 }
